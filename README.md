@@ -1,6 +1,8 @@
 # Check-SqlInstance
 Check-SqlInstance uses Powershell to return selected information about a SQL Server instance.  The Comment-based help is excepted below.  You can also access it using Get-Help.
 
+This is the code for the post [Returning Basic Instance Information with Powershell](https://shoestringdba.com/?p=662).
+
 ```
 <#
     .SYNOPSIS

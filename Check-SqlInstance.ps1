@@ -1,7 +1,3 @@
-# Check-SqlInstance
-Check-SqlInstance uses Powershell to return selected information about a SQL Server instance.  The Comment-based help is excepted below.  You can also access it using Get-Help.
-
-```
 <#
     .SYNOPSIS
     This script extracts some basic properties of a SQL Server instance and
@@ -70,4 +66,44 @@ Check-SqlInstance uses Powershell to return selected information about a SQL Ser
 
     Check the "MyInstance" instance and output results or errors to custom path.
 #>
-```
+param(
+    [Parameter(Mandatory = $true)]
+    [string]
+    $instancename,
+
+    [Parameter()]
+    [string]
+    $outfile = ".\Check-SqlInstanceResults.txt",
+
+    [Parameter()]
+    [string]
+    $errorfile = ".\Check-SqlInstanceErrors.txt"
+)
+$ErrorActionPreference = "Stop"
+try{
+    $instance = Get-SqlInstance -ServerInstance $instancename
+
+    "Check-SqlInstance results for $instance on $(Get-Date)" | Out-File $outfile
+
+    "[Instance Information]" | Out-File $outfile -Append
+    
+    $instance | Format-Table InstanceName, Edition, VersionString, ProductLevel, ProductUpdateLevel, LoginMode -Wrap | Out-File $outfile -Append
+    
+    "[Memory and Parallelism]" | Out-File $outfile -Append
+    
+    $instance.Configuration | Format-Table @{Label='Min Memory (MB)';Expression={$_.MinServerMemory.RunValue}}, @{Label='Max Memory (MB)';Expression={$_.MaxServerMemory.RunValue}}, @{Label='MaxDOP';Expression={$_.MaxDegreeOfParallelism.RunValue}}, @{Label='CToP';Expression={$_.CostThresholdForParallelism.RunValue}} -Wrap | Out-File $outfile -Append
+    
+    "[Databases]" | Out-File $outfile -Append
+    $databases = Get-SqlDatabase -InputObject $instance | Sort-Object -Property @{Expression = "IsSystemObject"; Descending = $true}, @{Expression = "Name"; Descending = $false}
+    
+    $databases | Format-Table Name, CompatibilityLevel, Status, Owner, AutoClose, AutoShrink -Wrap | Out-File $outfile -Append
+    
+    "[Backups]" | Out-File $outfile -Append
+    
+    $databases | Format-Table Name, RecoveryModel, @{Label = 'LastBackupDate';Expression = {if($_.LastBackupDate -gt (get-date 0)){$_.LastBackupDate} else {'Never'}}}, @{Label = 'LastDifferentialBackupDate';Expression = {if($_.LastDifferentialBackupDate -gt (get-date 0)){$_.LastDifferentialBackupDate} else {'Never'}}}, @{Label = 'LastLogBackupDate';Expression = {if($_.LastLogBackupDate -gt (get-date 0)){$_.LastLogBackupDate} else {'Never'}}} -Wrap | Out-File $outfile -Append
+}
+ catch{
+    $timenow = Get-Date
+    $e = $error[0]
+    "$timenow\: $e" | Out-File $errorfile
+ }
